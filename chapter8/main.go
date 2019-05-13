@@ -12,6 +12,12 @@ import (
 	"sort"
 	"hash/crc32" // hash includes adler32, crc32, crc64, and fnv. Hashes are frequently used in programming for everything from looking up data to easily detecting changes.
 	"crypto/sha1" // Cryptographic hash functions are similar to their non-cryptographic counterparts, but they have the added property of being hard to reverse
+	"net"
+	"net/http"
+	"encoding/gob"
+	"net/rpc"
+	"flag"
+	"math/rand"
 )
 
 // To demonstrate sorting
@@ -57,7 +63,122 @@ func getHash(filename string) (uint32, error) {
 	return h.Sum32(), nil
 }
 
+/*
+In Go, we can create a TCP server using the net package’s Listen function. Listen
+takes a network type (in our case, tcp) and an address and port to bind, and returns a
+net.Listener
+ */
+func server() {
+	// listen on a port
+	ln, err := net.Listen("tcp", ":9999")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for {
+		// accept a connection
+		c, err := ln.Accept()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		// handle the connection
+		go handleServerConnection(c)
+	}
+}
+func handleServerConnection(c net.Conn) {
+	// receive the message
+	var msg string
+	err := gob.NewDecoder(c).Decode(&msg)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("Received", msg)
+	}
+	c.Close()
+}
+func client() {
+	// connect to the server
+	c, err := net.Dial("tcp", "127.0.0.1:9999")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// send the message
+	msg := "Hello, World"
+	fmt.Println("Sending", msg)
+	err = gob.NewEncoder(c).Encode(msg)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.Close()
+}
+
+type Server struct {}
+func (this *Server) Negate(i int64, reply *int64) error {
+	*reply = -i
+	return nil
+}
+func rpcServer() {
+	rpc.Register(new(Server))
+	ln, err := net.Listen("tcp", ":9998")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			continue
+		}
+		go rpc.ServeConn(c)
+	}
+}
+func rpcClient() {
+	c, err := rpc.Dial("tcp", "127.0.0.1:9998")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	var result int64
+	err = c.Call("Server.Negate", int64(999), &result)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("Server.Negate(999) =", result)
+	}
+}
+
+// HTTP Server
+func hello(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set(
+		"Content-Type",
+		"text/html",
+	)
+	io.WriteString(
+		res,
+		`<DOCTYPE html>
+<html>
+<head>
+<title>Hello, World</title>
+</head>
+<body>
+Hello, World!
+</body>
+</html>`,
+	)
+}
+
 func main(){
+
+	// Parse command line args
+
+	// Define flags
+	maxp := flag.Int("max", 6, "the max value")
+	// Parse
+	flag.Parse()
+	// Generate a number between 0 and max
+	fmt.Println(rand.Intn(*maxp))
 
 	// String manipulation with `strings` library
 
@@ -72,10 +193,6 @@ func main(){
 	fmt.Println(strings.Split("a-b-c-d-e", "-")) // => []string{"a","b","c","d","e"}
 	fmt.Println(strings.ToLower("TEST")) // str8 outta java
 	fmt.Println(strings.ToUpper("test"))
-
-	// ___________________________________________________________________
-
-	// Read/write file with `os` and `io` libraries
 
 	// Example of reading file
 	file, err := os.Open("test.txt")
@@ -207,5 +324,26 @@ func main(){
 	bs = cH.Sum([]byte{})
 	fmt.Println(bs)
 
+
+
+	// TCP
+	go server()
+	go client()
+	var input string
+	fmt.Scanln(&input)
+
+
+
+	// Set up HTTP server
+ 	//http.HandleFunc("/hello", hello)
+	//http.ListenAndServe(":9000", nil)
+
+
+
+	// Remote Procedure Call (RPC)
+	go rpcServer()
+	go rpcClient()
+
+	fmt.Scanln(&input)
 
 }
