@@ -1,4 +1,4 @@
-# Introducing-Go
+# Introducing-Go-Examples
 
 All the code examples from "Introducing Go: Build Reliable, Scalable Programs" by Caleb Doxsey from the O'Reilly series.
 
