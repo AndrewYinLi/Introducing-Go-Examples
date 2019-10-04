@@ -2,7 +2,7 @@
 
 All the code examples from "Introducing Go: Build Reliable, Scalable Programs" by Caleb Doxsey from the O'Reilly series.
 
-Chapter:
+Chapter titles:
 1. Getting Started
 2. Types
 3. Variables
